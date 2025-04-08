@@ -11,24 +11,27 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 openai.api_key = OPENAI_API_KEY
 
-@app.route("/")
-def index():
-    return "Line GPT Bot is running!"
-
 @app.route("/webhook", methods=['POST'])
 def webhook():
     body = request.get_json()
+    print("Received webhook body:", body)  # 印出收到的內容
+
     if 'events' not in body:
+        print("No events found in body")
         return 'OK'
 
     for event in body['events']:
+        print("Event received:", event)  # 看每一個 event 是什麼
         if event['type'] == 'message' and event['message']['type'] == 'image':
+            print("Image message detected")  # 看有沒有走到這裡
             reply_token = event['replyToken']
             message_id = event['message']['id']
 
             image_data = get_image_from_line(message_id)
             if image_data:
+                print("Image data fetched, sending to GPT")
                 captions = generate_captions_with_openai(image_data)
+                print("Captions returned:", captions)
                 reply_message = "\n\n".join([f"文案 {i+1}：{txt}" for i, txt in enumerate(captions)])
                 reply_to_line(reply_token, reply_message)
 
