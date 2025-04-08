@@ -49,7 +49,32 @@ def get_image_from_line(message_id):
     else:
         return None 
         
-import os
+import base64
+
+def generate_captions_with_openai(image_bytes):
+    print("===> 開始處理圖片，準備轉 base64")
+    base64_image = base64.b64encode(image_bytes).decode('utf-8')
+
+    print("===> 呼叫 OpenAI API...")
+    response = openai.ChatCompletion.create(
+        model="gpt-4-vision-preview",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "請根據這張圖片產出三種風格不同的文案，每則約 100 字。風格可以是感性、故事敘述、社群貼文風格。"},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
+                ]
+            }
+        ],
+        max_tokens=800
+    )
+
+    print("===> 收到 OpenAI 回傳")
+    results = response.choices[0].message.content.strip()
+    return results.split('\n\n')
+    
+    import os
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
