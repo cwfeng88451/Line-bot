@@ -44,5 +44,10 @@ def get_image_from_line(message_id):
     if response.status_code == 200:
         return response.content
     else:
-        return None
-   
+        return None 
+        
+import os
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
