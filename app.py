@@ -35,4 +35,14 @@ def webhook():
     return 'OK'
 
 def get_image_from_line(message_id):
+    headers = {
+        "Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}"
+    }
+    url = f"https://api-data.line.me/v2/bot/message/{message_id}/content"
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 200:
+        return response.content
+    else:
+        return None
    
