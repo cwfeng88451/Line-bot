@@ -61,7 +61,7 @@ def generate_captions_with_openai(image_bytes):
     base64_image = base64.b64encode(image_bytes).decode('utf-8')
 
     response = openai.chat.completions.create(
-    model="gpt-4-vision-preview",
+    model="gpt-4-turbo-vision"
         messages=[
             {
                 "role": "user",
