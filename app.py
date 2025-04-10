@@ -5,22 +5,17 @@ import openai
 import base64
 from dotenv import load_dotenv
 
-# 載入.env檔案
 load_dotenv()
 
-# 讀取環境變數
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-# 檢查環境變數是否存在
 if not LINE_CHANNEL_ACCESS_TOKEN or not LINE_CHANNEL_SECRET or not OPENAI_API_KEY:
     raise ValueError("環境變數未設定完全，請檢查 .env 或 Render 環境變數設定")
 
-# 設定 OpenAI Key
 openai.api_key = OPENAI_API_KEY
 
-# Flask啟動
 app = Flask(__name__)
 
 @app.route("/webhook", methods=['POST'])
@@ -38,8 +33,8 @@ def webhook():
 
             image_data = get_image_from_line(message_id)
             if image_data:
-                captions = generate_captions_with_openai(image_data)
-                reply_message = "\n\n".join([f"文案 {i+1}：{txt}" for i, txt in enumerate(captions)])
+                title, content = generate_caption_with_openai(image_data)
+                reply_message = f"標題：{title}\n\n{content}"
                 reply_to_line(reply_token, reply_message)
 
     return 'OK'
@@ -57,25 +52,28 @@ def get_image_from_line(message_id):
         return None
 
 
-def generate_captions_with_openai(image_bytes):
+def generate_caption_with_openai(image_bytes):
     base64_image = base64.b64encode(image_bytes).decode('utf-8')
 
     response = openai.chat.completions.create(
-    model="gpt-4o",
+        model="gpt-4o",
         messages=[
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "請根據這張圖片產出三種風格不同的文案，每則約100字，風格分別是感性、故事、社群貼文。"},
+                    {"type": "text", "text": "請根據這張圖片，產出一個 10-20 字的標題，和一段約 40 字的文案。格式為：標題換行後加文案。"},
                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
                 ]
             }
         ],
-        max_tokens=800
+        max_tokens=400
     )
 
     results = response.choices[0].message.content.strip()
-    return results.split('\n\n')
+    lines = results.split('\n', 1)
+    title = lines[0]
+    content = lines[1] if len(lines) > 1 else ''
+    return title, content
 
 
 def reply_to_line(reply_token, text):
