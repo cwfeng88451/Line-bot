@@ -1,26 +1,23 @@
-# LINE ChatGPT 圖片文案自動生成機器人
+# LINE ChatGPT 圖片文案生成機器人
 
 ## 功能簡介
 - 上傳圖片至 LINE
-- 自動生成 3 種不同風格文案
-- 每種文案包含：
-風格類型：
-標題：（15-20字內）
-內容：（40-50字內）
+- 自動產出 1 種簡單版文案
+- 文案格式：
+標題：（10 字以內）
+內文：（30 字以內）
 
-## 專案安裝與部署
-### 安裝套件
-pip install -r requirements.txt
+## 使用流程
+1. 使用者上傳圖片
+2. 機器人自動回覆文案
+3. 每天可免費使用 X 次（自行控制）
 
-### .env 環境變數
-請建立 .env 檔案，填入以下資訊：
+## 安裝與部署
+步驟...
+.env 環境變數設定...
+Render 部署教學...
 
-LINE_CHANNEL_ACCESS_TOKEN=你的 Token
-LINE_CHANNEL_SECRET=你的 Secret
-OPENAI_API_KEY=你的 OpenAI Key
-
-### 部署 Render
-1. 上傳專案
-2. 設定 Environment Variables
-3. 設定 Webhook URL
-4. 測試
+## 收費建議方案
+- 免費版：每日限用 3 次
+- VIP 方案：無限制使用
+- 其他進階功能...
