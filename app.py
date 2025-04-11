@@ -18,8 +18,10 @@ BALANCE_TWD = float(os.getenv("BALANCE_TWD", 1000))
 
 openai.api_key = OPENAI_API_KEY
 
-users_data = {}  # 紀錄用戶資料 {user_id: {...}}
-admin_id = "你的LINE User ID"  # 請填入你的管理者ID
+users_data = {}
+admin_id = "0977419988"  # 管理者 User ID
+
+
 @app.route("/webhook", methods=['POST'])
 def webhook():
     body = request.get_json(force=True, silent=True)
@@ -63,6 +65,8 @@ def webhook():
                 reply_message(reply_token, share_text)
 
     return 'OK'
+
+
 def reply_image_message(user_id, reply_token, message_id):
     user = users_data[user_id]
     today = datetime.datetime.now().date()
@@ -94,7 +98,14 @@ def reply_image_message(user_id, reply_token, message_id):
     image_bytes = response.content
     content = generate_caption(image_bytes)
 
-    reply_message(reply_token, f"{content}\n\n每日免費次數:3 已使用:{user['daily_count']} 剩餘:{3-user['daily_count']}\n推薦次數:{user['recommend_count']}\n獎勵次數:{user['reward_count']}\n查看VIP方案請輸入:VIP\n查看分享方式請輸入:分享")
+    reply_text = f"{content}\n\n每日免費次數:3 已使用:{user['daily_count']} 剩餘:{3-user['daily_count']}\n推薦次數:{user['recommend_count']}\n獎勵次數:{user['reward_count']}\n查看VIP方案請輸入:VIP\n查看分享方式請輸入:分享"
+
+    if user_id == admin_id:
+        reply_text += "\n\n" + get_system_statistics() + "\n\n管理者可使用指令：\n管理 增加獎勵 user_id 次數\n管理 設定VIP user_id 天數\n管理 統計"
+
+    reply_message(reply_token, reply_text)
+
+
 def generate_caption(image_bytes):
     base64_image = base64.b64encode(image_bytes).decode('utf-8')
 
@@ -114,6 +125,8 @@ def generate_caption(image_bytes):
 
     result = response.choices[0].message.content.strip()
     return result
+
+
 def reply_admin_command(command, reply_token):
     parts = command.split()
     if parts[0] == "增加獎勵" and len(parts) == 3:
@@ -130,23 +143,24 @@ def reply_admin_command(command, reply_token):
             users_data[uid]["vip_expire"] = expire
             reply_message(reply_token, f"已為用戶{uid}設定VIP至{expire}")
     elif parts[0] == "統計":
-        total_users = len(users_data)
-        total_posts = sum(u["total_used"] for u in users_data.values())
-        usd_spent = total_posts * COST_PER_POST
-        usd_balance = get_openai_balance()
-        twd_balance = usd_balance * 33
-        reply_message(reply_token, f"目前用戶數:{total_users} 累積文案產生次數:{total_posts}\n累積花費約: NT${usd_spent*33:.0f}\nOpenAI餘額:${usd_balance:.2f} 約NT${twd_balance:.0f}")
+        reply_message(reply_token, get_system_statistics())
 
-def reply_user_status(user_id, reply_token):
-    user = users_data[user_id]
-    status = "VIP會員" if is_vip(user) else "免費用戶"
-    expire = user["vip_expire"] or "無"
-    reply_message(reply_token, f"【會員狀態】{status}\nVIP到期日:{expire}\n每日免費次數:3 今日已使用:{user['daily_count']} 剩餘:{3-user['daily_count']}\n推薦次數:{user['recommend_count']}\n獎勵次數:{user['reward_count']}")
+
+def get_system_statistics():
+    total_users = len(users_data)
+    total_posts = sum(u["total_used"] for u in users_data.values())
+    usd_spent = total_posts * COST_PER_POST
+    usd_balance = get_openai_balance()
+    twd_balance = usd_balance * 33
+    estimate_posts = int(usd_balance / COST_PER_POST)
+    return f"【系統統計資訊】\n目前用戶數:{total_users} 人\n累積文案產生次數:{total_posts} 次\n累積花費約: NT${usd_spent*33:.0f}\nOpenAI餘額:${usd_balance:.2f} 美金 約NT${twd_balance:.0f}\n預估還可產生:{estimate_posts} 篇文案"
+
 
 def is_vip(user):
     if user["vip_expire"] and user["vip_expire"] >= datetime.datetime.now().date():
         return True
     return False
+
 
 def get_openai_balance():
     url = "https://api.openai.com/v1/dashboard/billing/credit_grants"
@@ -155,6 +169,14 @@ def get_openai_balance():
     if response.status_code == 200:
         return response.json().get("total_available", 0)
     return 0
+
+
+def reply_user_status(user_id, reply_token):
+    user = users_data[user_id]
+    status = "VIP會員" if is_vip(user) else "免費用戶"
+    expire = user["vip_expire"] or "無"
+    reply_message(reply_token, f"【會員狀態】{status}\nVIP到期日:{expire}\n每日免費次數:3 今日已使用:{user['daily_count']} 剩餘:{3-user['daily_count']}\n推薦次數:{user['recommend_count']}\n獎勵次數:{user['reward_count']}")
+
 
 def reply_message(reply_token, text):
     url = "https://api.line.me/v2/bot/message/reply"
@@ -167,6 +189,7 @@ def reply_message(reply_token, text):
         "messages": [{"type": "text", "text": text}]
     }
     requests.post(url, headers=headers, json=data)
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
