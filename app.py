@@ -31,7 +31,6 @@ def webhook():
     for event in body['events']:
         if event['type'] == 'message':
             user_id = event['source']['userId']
-            text = event['message'].get('text', '')
             message_type = event['message']['type']
             reply_token = event['replyToken']
 
@@ -44,16 +43,17 @@ def webhook():
                     "total_used": 0
                 }
 
+            text = event['message'].get('text', '')
+
             if message_type == 'image':
-                reply_image_message(user_id, reply_token)
+                message_id = event['message']['id']
+                reply_image_message(user_id, reply_token, message_id)
             elif text.startswith("管理 "):
                 if user_id == admin_id:
                     reply_admin_command(text[3:], reply_token)
                 else:
                     reply_message(reply_token, "沒有權限執行此指令")
-            elif text == "功能":
-                reply_user_status(user_id, reply_token)
-            elif text == "剩餘次數":
+            elif text in ["功能", "剩餘次數"]:
                 reply_user_status(user_id, reply_token)
             elif text == "VIP":
                 reply_message(reply_token, "VIP方案: 月費100元，無限次數使用。加入客服了解更多。")
@@ -63,8 +63,7 @@ def webhook():
                 reply_message(reply_token, share_text)
 
     return 'OK'
-    
-def reply_image_message(user_id, reply_token):
+def reply_image_message(user_id, reply_token, message_id):
     user = users_data[user_id]
     today = datetime.datetime.now().date()
     if user.get("last_date") != today:
@@ -84,14 +83,37 @@ def reply_image_message(user_id, reply_token):
         return
 
     user["total_used"] += 1
-    content = generate_caption()
-    reply_message(reply_token, f"{content}\n\n每日免費次數:3 已使用:{user['daily_count']} 剩餘:{3-user['daily_count']}\n推薦次數:{user['recommend_count']}\n獎勵次數:{user['reward_count']}\n查看VIP方案請輸入:VIP\n查看分享方式請輸入:分享")
 
-def is_vip(user):
-    if user["vip_expire"] and user["vip_expire"] >= datetime.datetime.now().date():
-        return True
-    return False
-    
+    headers = {"Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}"}
+    url = f"https://api-data.line.me/v2/bot/message/{message_id}/content"
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        reply_message(reply_token, "圖片取得失敗，請重試")
+        return
+
+    image_bytes = response.content
+    content = generate_caption(image_bytes)
+
+    reply_message(reply_token, f"{content}\n\n每日免費次數:3 已使用:{user['daily_count']} 剩餘:{3-user['daily_count']}\n推薦次數:{user['recommend_count']}\n獎勵次數:{user['reward_count']}\n查看VIP方案請輸入:VIP\n查看分享方式請輸入:分享")
+def generate_caption(image_bytes):
+    base64_image = base64.b64encode(image_bytes).decode('utf-8')
+
+    response = openai.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "請針對這張圖片產生一個15字內的標題，與一段約40~50字的內文，格式為：標題換行後接內文。"},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
+                ]
+            }
+        ],
+        max_tokens=400
+    )
+
+    result = response.choices[0].message.content.strip()
+    return result
 def reply_admin_command(command, reply_token):
     parts = command.split()
     if parts[0] == "增加獎勵" and len(parts) == 3:
@@ -115,6 +137,17 @@ def reply_admin_command(command, reply_token):
         twd_balance = usd_balance * 33
         reply_message(reply_token, f"目前用戶數:{total_users} 累積文案產生次數:{total_posts}\n累積花費約: NT${usd_spent*33:.0f}\nOpenAI餘額:${usd_balance:.2f} 約NT${twd_balance:.0f}")
 
+def reply_user_status(user_id, reply_token):
+    user = users_data[user_id]
+    status = "VIP會員" if is_vip(user) else "免費用戶"
+    expire = user["vip_expire"] or "無"
+    reply_message(reply_token, f"【會員狀態】{status}\nVIP到期日:{expire}\n每日免費次數:3 今日已使用:{user['daily_count']} 剩餘:{3-user['daily_count']}\n推薦次數:{user['recommend_count']}\n獎勵次數:{user['reward_count']}")
+
+def is_vip(user):
+    if user["vip_expire"] and user["vip_expire"] >= datetime.datetime.now().date():
+        return True
+    return False
+
 def get_openai_balance():
     url = "https://api.openai.com/v1/dashboard/billing/credit_grants"
     headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
@@ -122,15 +155,6 @@ def get_openai_balance():
     if response.status_code == 200:
         return response.json().get("total_available", 0)
     return 0
-    
-def generate_caption():
-    return "【標題】測試標題\n【內文】這是測試內文30字內"
-
-def reply_user_status(user_id, reply_token):
-    user = users_data[user_id]
-    status = "VIP會員" if is_vip(user) else "免費用戶"
-    expire = user["vip_expire"] or "無"
-    reply_message(reply_token, f"【會員狀態】{status}\nVIP到期日:{expire}\n每日免費次數:3 今日已使用:{user['daily_count']} 剩餘:{3-user['daily_count']}\n推薦次數:{user['recommend_count']}\n獎勵次數:{user['reward_count']}")
 
 def reply_message(reply_token, text):
     url = "https://api.line.me/v2/bot/message/reply"
