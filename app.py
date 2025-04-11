@@ -123,7 +123,7 @@ def get_openai_balance():
         return response.json().get("total_available", 0)
     return 0
     
-    def generate_caption():
+def generate_caption():
     return "【標題】測試標題\n【內文】這是測試內文30字內"
 
 def reply_user_status(user_id, reply_token):
