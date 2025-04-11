@@ -34,7 +34,7 @@ def webhook():
 
                 image_data = get_image_from_line(message_id)
                 if image_data:
-                    reply_message = generate_captions_with_openai(image_data)
+                    reply_message = generate_simple_caption_with_openai(image_data)
                     reply_to_line(reply_token, reply_message)
                 else:
                     reply_to_line(reply_token, "圖片處理失敗，請稍後再試")
@@ -56,16 +56,15 @@ def get_image_from_line(message_id):
     return None
 
 
-def generate_captions_with_openai(image_bytes):
+def generate_simple_caption_with_openai(image_bytes):
     base64_image = base64.b64encode(image_bytes).decode('utf-8')
 
     prompt = """
-請針對這張圖片，產出三種不同風格的文案。
-每種文案格式如下：
-風格類型：
-標題：（15-20字內）
-內容：（40-50字內）
-風格盡量不同，例如：文青風、幽默風、溫暖療癒風。
+請針對這張圖片，產出一段文案。
+格式如下：
+標題：（10字以內）
+內文：（30字以內）
+請注意簡潔有力，適合社群貼文。
 """
 
     response = openai.chat.completions.create(
@@ -79,7 +78,7 @@ def generate_captions_with_openai(image_bytes):
                 ]
             }
         ],
-        max_tokens=500
+        max_tokens=300
     )
 
     result = response.choices[0].message.content.strip()
