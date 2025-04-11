@@ -9,6 +9,7 @@ load_dotenv()
 app = Flask(__name__)
 
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
+LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 
 @app.route("/webhook", methods=['POST'])
@@ -31,7 +32,6 @@ def webhook():
 
     return 'OK'
 
-
 def get_image_from_line(message_id):
     url = f"https://api-data.line.me/v2/bot/message/{message_id}/content"
     headers = {"Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}"}
@@ -41,7 +41,6 @@ def get_image_from_line(message_id):
 
 def generate_captions_with_deepseek(image_bytes):
     base64_image = base64.b64encode(image_bytes).decode('utf-8')
-
     prompt = """
 請針對這張圖片，產出三種不同風格的文案。
 每種文案格式如下：
@@ -68,7 +67,6 @@ def generate_captions_with_deepseek(image_bytes):
     result = response.json()
     return result['choices'][0]['message']['content']
 
-
 def reply_to_line(reply_token, text):
     url = "https://api.line.me/v2/bot/message/reply"
     headers = {
@@ -80,7 +78,6 @@ def reply_to_line(reply_token, text):
         "messages": [{"type": "text", "text": text}]
     }
     requests.post(url, headers=headers, json=body)
-
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
