@@ -105,7 +105,6 @@ def reply_image_message(user_id, reply_token, message_id):
 
     reply_message(reply_token, reply_text)
 
-
 def generate_caption(image_bytes):
     base64_image = base64.b64encode(image_bytes).decode('utf-8')
 
