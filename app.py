@@ -1,9 +1,9 @@
-from flask import Flask, request
 import os
-import requests
-import openai
 import base64
+import requests
+from flask import Flask, request
 from dotenv import load_dotenv
+import openai
 
 load_dotenv()
 
@@ -12,48 +12,61 @@ LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 if not LINE_CHANNEL_ACCESS_TOKEN or not LINE_CHANNEL_SECRET or not OPENAI_API_KEY:
-    raise ValueError("環境變數未設定完全，請檢查 .env 或 Render 環境變數設定")
+    raise ValueError("環境變數未設定完全，請檢查 .env 或 Render 環境變數")
 
 openai.api_key = OPENAI_API_KEY
-
 app = Flask(__name__)
 
 @app.route("/webhook", methods=['POST'])
 def webhook():
-    body = request.get_json()
-    print("收到 webhook:", body)
+    try:
+        body = request.get_json(force=True, silent=True)
+        print("收到 webhook:", body)
 
-    if 'events' not in body:
+        if not body or 'events' not in body:
+            print("body 無資料或格式錯誤")
+            return 'OK'
+
+        for event in body['events']:
+            if event['type'] == 'message' and event['message']['type'] == 'image':
+                reply_token = event['replyToken']
+                message_id = event['message']['id']
+
+                image_data = get_image_from_line(message_id)
+                if image_data:
+                    reply_message = generate_captions_with_openai(image_data)
+                    reply_to_line(reply_token, reply_message)
+                else:
+                    reply_to_line(reply_token, "圖片處理失敗，請稍後再試")
         return 'OK'
 
-    for event in body['events']:
-        if event['type'] == 'message' and event['message']['type'] == 'image':
-            reply_token = event['replyToken']
-            message_id = event['message']['id']
-
-            image_data = get_image_from_line(message_id)
-            if image_data:
-                title, content = generate_caption_with_openai(image_data)
-                reply_message = f"標題：{title}\n\n{content}"
-                reply_to_line(reply_token, reply_message)
-
-    return 'OK'
+    except Exception as e:
+        print("Webhook Error:", e)
+        return 'Error', 500
 
 
 def get_image_from_line(message_id):
-    headers = {
-        "Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}"
-    }
     url = f"https://api-data.line.me/v2/bot/message/{message_id}/content"
+    headers = {"Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}"}
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
+        print("取得 LINE 圖片成功")
         return response.content
-    else:
-        return None
+    print("取得 LINE 圖片失敗")
+    return None
 
 
-def generate_caption_with_openai(image_bytes):
+def generate_captions_with_openai(image_bytes):
     base64_image = base64.b64encode(image_bytes).decode('utf-8')
+
+    prompt = """
+請針對這張圖片，產出三種不同風格的文案。
+每種文案格式如下：
+風格類型：
+標題：（15-20字內）
+內容：（40-50字內）
+風格盡量不同，例如：文青風、幽默風、溫暖療癒風。
+"""
 
     response = openai.chat.completions.create(
         model="gpt-4o",
@@ -61,19 +74,17 @@ def generate_caption_with_openai(image_bytes):
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "請根據這張圖片，產出一個 10-20 字的標題，和一段約 40 字的文案。格式為：標題換行後加文案。"},
+                    {"type": "text", "text": prompt},
                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
                 ]
             }
         ],
-        max_tokens=400
+        max_tokens=500
     )
 
-    results = response.choices[0].message.content.strip()
-    lines = results.split('\n', 1)
-    title = lines[0]
-    content = lines[1] if len(lines) > 1 else ''
-    return title, content
+    result = response.choices[0].message.content.strip()
+    print("OpenAI 產生文案成功")
+    return result
 
 
 def reply_to_line(reply_token, text):
@@ -84,14 +95,13 @@ def reply_to_line(reply_token, text):
     }
     body = {
         "replyToken": reply_token,
-        "messages": [
-            {
-                "type": "text",
-                "text": text
-            }
-        ]
+        "messages": [{"type": "text", "text": text}]
     }
-    requests.post(url, headers=headers, json=body)
+    response = requests.post(url, headers=headers, json=body)
+    if response.status_code == 200:
+        print("LINE 回覆成功")
+    else:
+        print("LINE 回覆失敗:", response.text)
 
 
 if __name__ == "__main__":
