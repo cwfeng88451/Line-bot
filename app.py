@@ -4,20 +4,18 @@ import requests
 from flask import Flask, request
 from dotenv import load_dotenv
 
-# 載入 .env 環境變數
+# 載入 .env
 load_dotenv()
 
-# 取得環境變數
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 
 if not LINE_CHANNEL_ACCESS_TOKEN or not LINE_CHANNEL_SECRET or not DEEPSEEK_API_KEY:
-    raise ValueError("環境變數未設定完全，請檢查 .env 或 Render 環境變數設定")
+    raise ValueError("環境變數未設定完全，請檢查 .env 或 Render 環境變數")
 
 app = Flask(__name__)
 
-# Webhook 接收區
 @app.route("/webhook", methods=['POST'])
 def webhook():
     try:
@@ -25,6 +23,7 @@ def webhook():
         print("收到 webhook:", body)
 
         if not body or 'events' not in body:
+            print("body 無資料或格式錯誤")
             return 'OK'
 
         for event in body['events']:
@@ -36,7 +35,8 @@ def webhook():
                 if image_data:
                     reply_message = generate_captions_with_deepseek(image_data)
                     reply_to_line(reply_token, reply_message)
-
+                else:
+                    reply_to_line(reply_token, "圖片處理失敗，請稍後再試")
         return 'OK'
 
     except Exception as e:
@@ -44,15 +44,17 @@ def webhook():
         return 'Error', 500
 
 
-# 從 LINE API 取得圖片資料
 def get_image_from_line(message_id):
     url = f"https://api-data.line.me/v2/bot/message/{message_id}/content"
     headers = {"Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}"}
     response = requests.get(url, headers=headers)
-    return response.content if response.status_code == 200 else None
+    if response.status_code == 200:
+        print("取得 LINE 圖片成功")
+        return response.content
+    print("取得 LINE 圖片失敗")
+    return None
 
 
-# 使用 DeepSeek API 生成 3 種不同風格文案
 def generate_captions_with_deepseek(image_bytes):
     base64_image = base64.b64encode(image_bytes).decode('utf-8')
 
@@ -79,11 +81,16 @@ def generate_captions_with_deepseek(image_bytes):
     }
 
     response = requests.post("https://api.deepseek.com/v1/chat/completions", headers=headers, json=payload)
-    result = response.json()
-    return result['choices'][0]['message']['content']
+
+    if response.status_code == 200:
+        result = response.json()
+        print("DeepSeek 回傳成功")
+        return result['choices'][0]['message']['content']
+    else:
+        print("DeepSeek 回傳失敗:", response.text)
+        return "文案生成失敗，請稍後再試"
 
 
-# 回覆 LINE 使用者訊息
 def reply_to_line(reply_token, text):
     url = "https://api.line.me/v2/bot/message/reply"
     headers = {
@@ -94,10 +101,13 @@ def reply_to_line(reply_token, text):
         "replyToken": reply_token,
         "messages": [{"type": "text", "text": text}]
     }
-    requests.post(url, headers=headers, json=body)
+    response = requests.post(url, headers=headers, json=body)
+    if response.status_code == 200:
+        print("LINE 回覆成功")
+    else:
+        print("LINE 回覆失敗:", response.text)
 
 
-# 啟動 Flask
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
