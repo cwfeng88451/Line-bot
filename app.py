@@ -51,59 +51,6 @@ def reply_message(reply_token, text):
     }
     requests.post("https://api.line.me/v2/bot/message/reply", headers=headers, json=payload)
 
-def reply_image_and_text(reply_token, image_url, text):
-    payload = {
-        "replyToken": reply_token,
-        "messages": [
-            {"type": "image", "originalContentUrl": image_url, "previewImageUrl": image_url},
-            {"type": "text", "text": text}
-        ]
-    }
-    requests.post("https://api.line.me/v2/bot/message/reply", headers=headers, json=payload)
-
-def get_user_status(user_id):
-    user = users_data.get(user_id, {})
-    vip_expire = user.get("vip_expire", "無")
-    recommend = user.get("recommend_count", 0)
-    reward = user.get("reward_count", 0)
-    add_customer = user.get("add_customer_count", 0)
-    total_used = user.get("total_used", 0)
-
-    status = f"""VIP到期日：{vip_expire}
-推薦次數：{recommend}
-獎勵次數：{reward}
-加入客服獎勵次數：{add_customer}
-累積使用次數：{total_used}"""
-    return status
-    
-def update_user_count(user_id, count_type, add_count, source):
-    user = users_data.setdefault(user_id, {
-        "vip_start": None,
-        "vip_expire": None,
-        "vip_type": None,
-        "recommend_count": 0,
-        "reward_count": 0,
-        "add_customer_count": 0,
-        "total_used": 0
-    })
-
-    before_count = user.get(count_type, 0)
-    user[count_type] = before_count + add_count
-    save_users_data()
-
-    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    log_content = f"""=== 操作紀錄 ===
-操作時間：{now}
-管理者：U0977419988
-目標會員：{user_id}
-來源分類：{source}
-原有次數：{before_count}
-變更後次數：{user[count_type]}
-備註：{source}增加{add_count}次使用次數"""
-    save_log(log_content)
-
-    return f"操作成功！\n{log_content}"
-    
 @app.route("/webhook", methods=["POST"])
 def webhook():
     body = request.get_json()
@@ -135,36 +82,31 @@ def webhook():
                 text = event["message"]["text"]
 
                 if text == "資訊" or text == "剩餘次數":
-                    status = get_user_status(user_id)
+                    status = f"""VIP到期日：{users_data[user_id].get('vip_expire', '無')}
+推薦次數：{users_data[user_id].get('recommend_count', 0)}
+獎勵次數：{users_data[user_id].get('reward_count', 0)}
+加入客服獎勵次數：{users_data[user_id].get('add_customer_count', 0)}
+累積使用次數：{users_data[user_id].get('total_used', 0)}"""
                     reply_message(reply_token, f"{config['tips']}\n\n{status}\n\n{config['functions']}\n\n【你的 User ID】{user_id}")
-                    
+
                 elif text == "VIP":
                     reply_message(reply_token, f"{config['vip_info']}\n\n{config['functions']}\n\n【你的 User ID】{user_id}")
 
                 elif text == "分享":
                     share_url = f"https://line.me/R/ti/p/@你的LINE官方帳號ID?ref={user_id}"
                     share_text = f"{config['share_text']}\n{share_url}\n\n加入客服獲得額外10次使用次數（限1次）：https://lin.ee/w4elbGV"
-                    reply_image_and_text(reply_token, config['share_image'], share_text)
-
-                elif text.startswith("管理 增加客服"):
-                    _, _, target_id, count = text.split()
-                    reply_message(reply_token, update_user_count(target_id, "add_customer_count", int(count), "加入客服"))
-
-                elif text.startswith("管理 增加推薦"):
-                    _, _, target_id, count = text.split()
-                    reply_message(reply_token, update_user_count(target_id, "recommend_count", int(count), "推薦好友"))
-
-                elif text.startswith("管理 增加獎勵"):
-                    _, _, target_id, count = text.split()
-                    reply_message(reply_token, update_user_count(target_id, "reward_count", int(count), "客服額外獎勵"))
-
-                elif text.startswith("管理 查詢"):
-                    _, _, target_id = text.split()
-                    status = get_user_status(target_id)
-                    reply_message(reply_token, status)
+                    reply_message(reply_token, share_text)
 
                 else:
                     reply_message(reply_token, f"{config['tips']}\n\n請輸入正確的指令或上傳圖片進行文案生成！\n\n{config['functions']}\n\n【你的 User ID】{user_id}")
+
+            elif message_type == "image":
+                reply_message(reply_token, "收到圖片了，正在產生文案，請稍後...")
+
+                result_title = "【標題】AI生成標題"
+                result_content = "【內文】AI根據圖片產生的內容，約30-50字。"
+
+                reply_message(reply_token, f"{result_title}\n{result_content}\n\n{config['functions']}\n\n加入客服獲得額外10次使用次數（限1次）：https://lin.ee/w4elbGV\n\n【你的 User ID】{user_id}")
 
     return "OK"
 
