@@ -13,8 +13,7 @@ LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-COST_PER_POST = float(os.getenv("COST_PER_POST", 0.05))
-TWD_EXCHANGE_RATE = int(os.getenv("TWD_EXCHANGE_RATE", 33))
+ADMIN_USER_ID = "U984188d553a80bf4c6c8fce95e268f9c"  # 管理者ID
 
 headers = {
     "Content-Type": "application/json",
@@ -36,13 +35,6 @@ users_data = load_json("users_data.json")
 
 def save_users_data():
     save_json("users_data.json", users_data)
-
-def save_log(content):
-    if not os.path.exists("logs"):
-        os.makedirs("logs")
-    today = datetime.datetime.now().strftime("%Y%m%d")
-    with open(f"logs/record_{today}.txt", "a", encoding="utf-8") as f:
-        f.write(content + "\n\n")
 
 def reply_message(reply_token, text):
     payload = {
@@ -104,6 +96,12 @@ def webhook():
                     share_text = f"{config['share_text']}\n{share_url}\n\n加入客服獲得額外10次使用次數（限1次）：https://lin.ee/w4elbGV"
                     reply_message(reply_token, share_text)
 
+                elif text == "管理":
+                    if user_id == ADMIN_USER_ID:
+                        reply_message(reply_token, "【管理者模式】\n請輸入管理指令，例如：增加次數 查詢用戶 查看統計")
+                    else:
+                        reply_message(reply_token, "非管理者，無法使用管理功能。")
+
                 else:
                     reply_message(reply_token, f"{config['tips']}\n\n請輸入正確的指令或上傳圖片進行文案生成！\n\n{config['functions']}\n\n【你的 User ID】{user_id}")
 
@@ -111,7 +109,7 @@ def webhook():
                 reply_message(reply_token, "收到圖片了，正在產生文案，請稍後...")
 
                 result_title = "【標題】AI生成標題"
-                result_content = "【內文】AI根據圖片產生的內容，約30-50字。"
+                result_content = "【內文】AI根據圖片產生的內容"
 
                 push_message(user_id, f"{result_title}\n{result_content}\n\n{config['functions']}\n\n加入客服獲得額外10次使用次數（限1次）：https://lin.ee/w4elbGV\n\n【你的 User ID】{user_id}")
 
