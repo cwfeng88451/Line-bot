@@ -11,7 +11,6 @@ from linebot.models import MessageEvent, TextMessage, ImageMessage, TextSendMess
 
 app = Flask(__name__)
 
-# 載入環境變數
 load_dotenv()
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
 LINE_CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET')
@@ -21,16 +20,9 @@ line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 openai.api_key = OPENAI_API_KEY
 
-# 管理者 User ID
 ADMIN_USER_ID = 'U984188d553a80bf4c6c8fce95e268f9c'
-
-# 每日免費使用次數
 DAILY_FREE_LIMIT = 3
-
-# 客服網址
 CUSTOMER_SERVICE_URL = "https://lin.ee/w4elbGV"
-
-# 使用者資料檔案
 USER_DATA_FILE = 'users_data.json'
 
 def load_user_data():
@@ -108,12 +100,10 @@ def handle_image_message(event):
     user_data[user_id] = user
     save_user_data(user_data)
 
-    # 計算剩餘次數與 VIP 到期日
     remaining = DAILY_FREE_LIMIT - user['used_count']
     vip_expiry = datetime.strptime(user['vip_expiry'], '%Y-%m-%d')
     vip_days_left = (vip_expiry - datetime.now()).days
 
-    # 回覆格式
     reply_text = f"""歡迎使用 AI看圖寫文案智能體，只要上傳圖片，即可快速產生文案，協助你發文不再煩惱。
 
 【標題】{title}
@@ -150,7 +140,6 @@ VIP 到期日：{user['vip_expiry']}（剩{vip_days_left}天）
 
     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
 
-# 狀態查詢功能
 def generate_status(user_id):
     user = user_data.get(user_id, {
         'used_count': 0,
