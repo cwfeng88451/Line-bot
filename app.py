@@ -1,160 +1,115 @@
-from flask import Flask, request, jsonify
-import os
-import json
-from dotenv import load_dotenv
-import requests
-import datetime
-import base64
-
-load_dotenv()
+from flask import Flask, request, abort
+from datetime import datetime, timedelta
+from linebot import LineBotApi, WebhookHandler
+from linebot.exceptions import InvalidSignatureError
+from linebot.models import (
+    MessageEvent, ImageMessage, TextSendMessage
+)
 
 app = Flask(__name__)
 
-LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
-LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# 請替換為您的 Channel Access Token 和 Channel Secret
+line_bot_api = LineBotApi('YOUR_CHANNEL_ACCESS_TOKEN')
+handler = WebhookHandler('YOUR_CHANNEL_SECRET')
 
-ADMIN_USER_ID = "U984188d553a80bf4c6c8fce95e268f9c"  # 管理者ID
-
-headers = {
-    "Content-Type": "application/json",
-    "Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}"
+# 模擬使用者資料庫
+user_data = {
+    'U984188d553a80bf4c6c8fce95e268f9c': {
+        'used_count': 2,
+        'recommend_count': 3,
+        'customer_service_count': 5,
+        'vip_expiry': '2025-05-01'
+    }
 }
 
-def load_json(filename):
-    if os.path.exists(filename):
-        with open(filename, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
+# 每日免費使用次數
+DAILY_FREE_LIMIT = 3
 
-def save_json(filename, data):
-    with open(filename, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+@app.route("/callback", methods=['POST'])
+def callback():
+    # 取得 X-Line-Signature 標頭值
+    signature = request.headers['X-Line-Signature']
 
-config = load_json("config.json")
-users_data = load_json("users_data.json")
+    # 取得請求主體內容
+    body = request.get_data(as_text=True)
 
-def save_users_data():
-    save_json("users_data.json", users_data)
-
-def reply_message(reply_token, text):
-    payload = {
-        "replyToken": reply_token,
-        "messages": [{"type": "text", "text": text}]
-    }
-    requests.post("https://api.line.me/v2/bot/message/reply", headers=headers, json=payload)
-
-def push_message(user_id, text):
-    payload = {
-        "to": user_id,
-        "messages": [{"type": "text", "text": text}]
-    }
-    requests.post("https://api.line.me/v2/bot/message/push", headers=headers, json=payload)
-
-def get_image_from_line(message_id):
-    url = f"https://api-data.line.me/v2/bot/message/{message_id}/content"
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return response.content
-    return None
-
-def generate_caption(image_bytes):
-    base64_image = base64.b64encode(image_bytes).decode('utf-8')
+    # 處理 webhook 主體
     try:
-        response = requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {OPENAI_API_KEY}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": "gpt-4o",
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": "請為這張圖片生成一個15字內的標題和一段40-50字的內文，格式為：標題換行後加內文。"},
-                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
-                        ]
-                    }
-                ]
-            }
-        )
-        result = response.json()
-        content = result["choices"][0]["message"]["content"].strip()
-        lines = content.split('\n', 1)
-        title = lines[0] if len(lines) > 0 else "【標題】這是一張值得分享的照片"
-        text = lines[1] if len(lines) > 1 else "【內文】用照片記錄生活點滴，分享你的故事，讓更多人看見。"
-    except:
-        title = "【標題】這是一張值得分享的照片"
-        text = "【內文】用照片記錄生活點滴，分享你的故事，讓更多人看見。"
-    return title, text
+        handler.handle(body, signature)
+    except InvalidSignatureError:
+        abort(400)
 
-@app.route("/webhook", methods=["POST"])
-def webhook():
-    body = request.get_json()
-    print(body)
+    return 'OK'
 
-    if "events" not in body:
-        return "OK"
+@handler.add(MessageEvent, message=ImageMessage)
+def handle_image_message(event):
+    user_id = event.source.user_id
 
-    for event in body["events"]:
-        user_id = event["source"]["userId"]
-        reply_token = event["replyToken"]
+    # 取得使用者資料，若無則初始化
+    data = user_data.get(user_id, {
+        'used_count': 0,
+        'recommend_count': 0,
+        'customer_service_count': 0,
+        'vip_expiry': '2025-05-01'
+    })
 
-        if user_id not in users_data:
-            users_data[user_id] = {
-                "vip_start": None,
-                "vip_expire": None,
-                "vip_type": None,
-                "recommend_count": 0,
-                "reward_count": 0,
-                "add_customer_count": 0,
-                "total_used": 0
-            }
-            save_users_data()
+    # 計算剩餘免費次數
+    remaining_free = DAILY_FREE_LIMIT - data['used_count']
+    if remaining_free < 0:
+        remaining_free = 0
 
-        if event["type"] == "message":
-            message_type = event["message"]["type"]
+    # 計算 VIP 剩餘天數
+    vip_expiry_date = datetime.strptime(data['vip_expiry'], '%Y-%m-%d')
+    days_left = (vip_expiry_date - datetime.now()).days
+    if days_left < 0:
+        days_left = 0
 
-            if message_type == "text":
-                text = event["message"]["text"]
+    # 產生標題與內文（此處為範例，實際應根據圖片內容生成）
+    title = "午後陽光的溫度"
+    content = "靜靜地坐在窗邊，讓陽光灑滿心房，這就是生活的溫柔片刻。"
 
-                if text == "資訊" or text == "剩餘次數":
-                    status = f"""VIP到期日：{users_data[user_id].get('vip_expire', '無')}
-推薦次數：{users_data[user_id].get('recommend_count', 0)}
-獎勵次數：{users_data[user_id].get('reward_count', 0)}
-加入客服獎勵次數：{users_data[user_id].get('add_customer_count', 0)}
-累積使用次數：{users_data[user_id].get('total_used', 0)}"""
-                    reply_message(reply_token, f"{config['tips']}\n\n{status}\n\n{config['functions']}\n\n【你的 User ID】{user_id}")
+    # 組合回覆訊息
+    reply_text = f"""【標題】{title}
+【內文】{content}
 
-                elif text == "VIP":
-                    reply_message(reply_token, f"{config['vip_info']}\n\n{config['functions']}\n\n【你的 User ID】{user_id}")
+---
 
-                elif text == "分享":
-                    share_url = f"https://line.me/R/ti/p/@你的LINE官方帳號ID?ref={user_id}"
-                    share_text = f"{config['share_text']}\n{share_url}\n\n加入客服獲得額外10次使用次數（限1次）：https://lin.ee/w4elbGV"
-                    reply_message(reply_token, share_text)
+【使用者可用指令】
+（1）資訊 - 查看個人狀態
+（2）VIP - 查看 VIP 方案
+（3）分享 - 產生分享推薦鏈結（系統自動統計透過分享添加機器人的數量）
 
-                elif text == "管理":
-                    if user_id == ADMIN_USER_ID:
-                        reply_message(reply_token, "【管理者模式】\n請輸入管理指令，例如：增加次數 查詢用戶 查看統計")
-                    else:
-                        reply_message(reply_token, "非管理者，無法使用管理功能。")
+---
 
-                else:
-                    reply_message(reply_token, f"{config['tips']}\n\n請輸入正確的指令或上傳圖片進行文案生成！\n\n{config['functions']}\n\n【你的 User ID】{user_id}")
+【目前狀態】
+每日免費使用次數：{DAILY_FREE_LIMIT}次（每日凌晨自動重置）
+今日已使用次數：{data['used_count']}次
+今日剩餘免費次數：{remaining_free}次
+推薦獎勵剩餘次數：{data['recommend_count']}次（透過分享推薦獲得）
+客服獎勵剩餘次數：{data['customer_service_count']}次（加入客服獲得）
 
-            elif message_type == "image":
-                reply_message(reply_token, "收到圖片了，正在產生文案，請稍後...")
-                message_id = event["message"]["id"]
-                image_data = get_image_from_line(message_id)
-                if image_data:
-                    title, text = generate_caption(image_data)
-                    push_message(user_id, f"{title}\n{text}\n\n{config['functions']}\n\n加入客服獲得額外10次使用次數（限1次）：https://lin.ee/w4elbGV\n\n【你的 User ID】{user_id}")
+VIP 到期日：{data['vip_expiry']}（剩{days_left}天）
 
-    return "OK"
+---
+
+加入客服獲得額外10次使用次數（限1次）：
+https://lin.ee/w4elbGV
+
+---
+
+【用戶ID】
+{user_id}
+"""
+
+    # 回覆訊息
+    line_bot_api.reply_message(
+        event.reply_token,
+        TextSendMessage(text=reply_text)
+    )
+
+    # 更新使用者已使用次數
+    data['used_count'] += 1
+    user_data[user_id] = data
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    app.run()
