@@ -5,12 +5,9 @@ from datetime import datetime, timedelta
 from flask import Flask, request, abort
 from dotenv import load_dotenv
 import openai
-from linebot.v3.messaging import LineBotApi
-from linebot.v3.webhook import WebhookHandler
-from linebot.v3.exceptions import InvalidSignatureError
-from linebot.v3.webhooks import MessageEvent
-from linebot.v3.messaging import TextSendMessage
-from linebot.v3.webhooks import TextMessageContent, ImageMessageContent
+from linebot import LineBotApi, WebhookHandler
+from linebot.exceptions import InvalidSignatureError
+from linebot.models import MessageEvent, TextMessage, ImageMessage, TextSendMessage
 
 app = Flask(__name__)
 
@@ -58,25 +55,25 @@ def callback():
         abort(400)
     return 'OK'
 
-@handler.add(MessageEvent, message=TextMessageContent)
+@handler.add(MessageEvent, message=TextMessage)
 def handle_text_message(event):
     user_id = event.source.user_id
     text = event.message.text.strip()
 
     if user_id == ADMIN_USER_ID and text == "管理":
         reply = "【管理者功能】\n1. 查看全部用戶資料（開發中）\n2. 調整次數（開發中）"
-        line_bot_api.reply_message(event.reply_token, [TextSendMessage(text=reply)])
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
         return
 
     if text == "資訊":
         reply = generate_status(user_id)
-        line_bot_api.reply_message(event.reply_token, [TextSendMessage(text=reply)])
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
         return
 
     reply = "無法識別的指令，請使用以下指令：\n（1）資訊 - 查看個人狀態\n（2）VIP - 查看 VIP 方案\n（3）分享 - 產生分享推薦鏈結"
-    line_bot_api.reply_message(event.reply_token, [TextSendMessage(text=reply)])
+    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
 
-@handler.add(MessageEvent, message=ImageMessageContent)
+@handler.add(MessageEvent, message=ImageMessage)
 def handle_image_message(event):
     user_id = event.source.user_id
     user = user_data.get(user_id, {
@@ -88,7 +85,7 @@ def handle_image_message(event):
 
     if user['used_count'] >= DAILY_FREE_LIMIT:
         reply = "今日免費使用次數已達上限，請明日再試或升級為 VIP。"
-        line_bot_api.reply_message(event.reply_token, [TextSendMessage(text=reply)])
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
         return
 
     message_content = line_bot_api.get_message_content(event.message.id)
@@ -116,7 +113,7 @@ def handle_image_message(event):
     vip_expiry = datetime.strptime(user['vip_expiry'], '%Y-%m-%d')
     vip_days_left = (vip_expiry - datetime.now()).days
 
-    # 組合固定格式回覆內容
+    # 回覆格式
     reply_text = f"""歡迎使用 AI看圖寫文案智能體，只要上傳圖片，即可快速產生文案，協助你發文不再煩惱。
 
 【標題】{title}
@@ -151,7 +148,7 @@ VIP 到期日：{user['vip_expiry']}（剩{vip_days_left}天）
 {user_id}
 """
 
-    line_bot_api.reply_message(event.reply_token, [TextSendMessage(text=reply_text)])
+    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
 
 # 狀態查詢功能
 def generate_status(user_id):
@@ -185,7 +182,6 @@ VIP 到期日：{user['vip_expiry']}（剩{vip_days_left}天）
 【用戶ID】
 {user_id}
 """
-
     return status_text
 
 if __name__ == "__main__":
