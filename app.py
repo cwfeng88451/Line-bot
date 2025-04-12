@@ -43,13 +43,20 @@ def save_log(content):
     today = datetime.datetime.now().strftime("%Y%m%d")
     with open(f"logs/record_{today}.txt", "a", encoding="utf-8") as f:
         f.write(content + "\n\n")
-        
+
 def reply_message(reply_token, text):
     payload = {
         "replyToken": reply_token,
         "messages": [{"type": "text", "text": text}]
     }
     requests.post("https://api.line.me/v2/bot/message/reply", headers=headers, json=payload)
+
+def push_message(user_id, text):
+    payload = {
+        "to": user_id,
+        "messages": [{"type": "text", "text": text}]
+    }
+    requests.post("https://api.line.me/v2/bot/message/push", headers=headers, json=payload)
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -106,11 +113,10 @@ def webhook():
                 result_title = "【標題】AI生成標題"
                 result_content = "【內文】AI根據圖片產生的內容，約30-50字。"
 
-                reply_message(reply_token, f"{result_title}\n{result_content}\n\n{config['functions']}\n\n加入客服獲得額外10次使用次數（限1次）：https://lin.ee/w4elbGV\n\n【你的 User ID】{user_id}")
+                push_message(user_id, f"{result_title}\n{result_content}\n\n{config['functions']}\n\n加入客服獲得額外10次使用次數（限1次）：https://lin.ee/w4elbGV\n\n【你的 User ID】{user_id}")
 
     return "OK"
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
-    
