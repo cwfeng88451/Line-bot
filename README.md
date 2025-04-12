@@ -1,113 +1,79 @@
 # AI看圖寫文案智能體
 
-這是一個幫助使用者在 FB/IG/社群平台貼文時，透過 AI 自動產生標題與內文的 LINE 機器人。  
+## 專案介紹
+這是一個 LINE 機器人，使用者上傳圖片後，自動產生社群貼文用的標題與文案。
 
-目標是解決沒靈感困擾，提升社群互動與貼文效率。
+## 環境需求
+- Python 3.8+
+- Flask
+- requests
+- python-dotenv
+- OpenAI API Key
+- LINE Messaging API
 
 ---
 
-## 核心功能
+## 專案檔案說明
+| 檔案 | 功能說明 |
+|------|----------|
+| app.py | 系統核心程式 |
+| config.json | 動態文字設定檔 |
+| users_data.json | 會員資料自動儲存 |
+| users_list.txt | 簡易會員 user_id 列表 |
+| logs/ | 操作紀錄自動儲存 |
+| .env | 環境變數設定檔（請參考 .env.example）|
+| requirements.txt | Python 套件需求 |
+| AI_Operation_Guide.txt | 營運維護手冊 |
 
-- 使用者上傳圖片 → 自動產生文案  
-- 文案格式：  
-  標題（15字內）  
-  內文（40~50字內）  
+---
 
-- 免費使用者每日限制 3 次  
-- 推薦好友增加額外次數  
-- VIP 會員無限次數使用  
-- 管理者專屬指令管理  
-- 自動產生專屬推薦連結  
-- 自動統計使用狀況  
+## .env 設定範例
+LINE_CHANNEL_ACCESS_TOKEN=你的LINE_CHANNEL_ACCESS_TOKEN
+LINE_CHANNEL_SECRET=你的LINE_CHANNEL_SECRET
+OPENAI_API_KEY=你的OPENAI_API_KEY
+
+COST_PER_POST=0.05
+TWD_EXCHANGE_RATE=33
 
 ---
 
 ## 使用者指令
-
-| 指令 | 說明 |
+| 指令 | 功能 |
 |------|------|
-| 上傳圖片 | 自動產生一篇文案 |
-| 功能 / 剩餘次數 | 顯示今日使用狀況與剩餘次數 |
-| VIP | 查看 VIP 方案與付費說明 |
-| 分享 | 顯示專屬推薦連結與分享文案 |
+| 資訊 / 剩餘次數 | 查看個人狀態與次數 |
+| VIP | 查看 VIP 方案 |
+| 分享 | 產生個人推薦網址 |
+| 我的ID | 查詢自己的 user_id |
 
 ---
 
 ## 管理者指令
-
-| 指令 | 說明 |
+| 指令 | 功能 |
 |------|------|
-| 管理 增加獎勵 user_id 次數 | 增加指定用戶獎勵次數 |
-| 管理 設定VIP user_id 天數 | 設定指定用戶 VIP 有效天數 |
-| 管理 統計 | 顯示目前系統統計資訊 |
+| 管理 增加客服 user_id 次數 | 增加加入客服獎勵次數 |
+| 管理 增加推薦 user_id 次數 | 增加推薦好友次數 |
+| 管理 增加獎勵 user_id 次數 | 額外客服提供獎勵次數 |
+| 管理 查詢 user_id | 查詢該會員完整資料 |
 
 ---
 
-## 分享文案範例
-
-每天免費使用3次！  
-只要上傳圖片，AI幫你自動產生標題與內文，輕鬆發文不再沒靈感！  
-
-立即體驗：  
-https://你的LIFF網址?ref=你的用戶ID  
+## 資料管理
+- 所有資料自動寫入 json 檔案
+- logs/ 資料夾每日自動產生紀錄檔
+- Render / Github 重啟後自動讀取最新資料
+- 請定期下載備份 users_data.json 與 logs/ 檔案
 
 ---
 
-## VIP 收費方案
-
-| 方案 | 金額 | 使用天數 |
-|------|------|----------|
-| 月費 | NT$100 | 30 天 |
-| 季費 | NT$270 | 90 天（9折） |
-| 半年 | NT$500 | 180 天（8折） |
-| 年費 | NT$900 | 360 天（7.5折） |
-
----
-
-## 加入客服贈送獎勵
-
-加入客服官方帳號後 → 回覆【已加入客服】  
-即可獲得獎勵次數 10 次！
-
-客服網址：  
-https://lin.ee/w4elbGV  
+## 部署步驟
+1. 上傳專案檔案至 GitHub
+2. Render 建立 Web Service
+3. 設定 .env 環境變數
+4. Deploy 最新版本
+5. 測試 webhook 回應
+6. 開始營運！
 
 ---
 
-## Render 部署教學（手機適用）
-
-1. 註冊 https://render.com  
-2. 建立 New Web Service  
-3. 選擇 Python + 自動跑 app.py  
-4. 上傳檔案：  
-- app.py  
-- requirements.txt  
-- .env  
-
-5. 設定環境變數：  
-| 名稱 | 說明 |
-|------|------|
-| LINE_CHANNEL_ACCESS_TOKEN | LINE TOKEN |
-| LINE_CHANNEL_SECRET | LINE SECRET |
-| OPENAI_API_KEY | OpenAI API Key |
-| COST_PER_POST | 每篇文案成本 0.05 |
-| BALANCE_TWD | 目前台幣儲值額度 |
-
-6. 完成後，複製 Render 給的網址  
-7. 貼入 LINE Developers Webhook 設定  
-
----
-
-## 專案結構
-
----
-
-## 營運建議
-
-1. 免費版每日 3 次，吸引用戶  
-2. 分享推薦機制促進擴散  
-3. VIP 為主要營收模式  
-4. 加入客服獎勵增加互動  
-5. 未來可擴充多文案風格 / 自動付費串接 / 數據後台管理  
-
----
+## 備註
+詳細營運與維護請參考 AI_Operation_Guide.txt
