@@ -116,7 +116,7 @@ def handle_image_message(event):
     vip_expiry = datetime.strptime(user['vip_expiry'], '%Y-%m-%d')
     vip_days_left = (vip_expiry - datetime.now()).days
 
-        # 組合回覆訊息
+    # 組合回覆訊息
     reply_text = f"""歡迎使用 AI看圖寫文案智能體，只要上傳圖片，即可快速產生文案，協助你發文不再煩惱。
 
 【標題】{title}
