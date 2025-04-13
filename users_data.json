@@ -1,11 +1,11 @@
 {
-    "Uxxxxxxxxxxxxxx": {
-        "nickname": "未設定",
-        "daily_limit": 3,
-        "used_count": 0,
-        "invite_bonus": 0,
-        "service_bonus": 0,
-        "vip_expiry": "無",
-        "vip_days_left": "0"
-    }
+  "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx": {
+    "user_name": "未設定",
+    "daily_limit": 3,
+    "used_count": 0,
+    "invite_bonus": 0,
+    "service_bonus": 0,
+    "vip_expiry": "無",
+    "vip_days_left": "0"
+  }
 }
