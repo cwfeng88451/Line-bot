@@ -6,7 +6,5 @@
   "user_status_format": "【目前狀態】\n每日免費使用次數：{daily_limit}次（每日凌晨自動重置）\n今日已使用次數：{used_count}次\n今日剩餘免費次數：{remaining_count}次\n推薦獎勵剩餘次數：{invite_bonus}次（透過分享推薦獲得）\n客服獎勵剩餘次數：{service_bonus}次（加入客服獲得）\nVIP 到期日：{vip_expiry}（剩餘 {vip_days_left} 天）",
   "add_service_text": "加入客服，獲得額外10次免費使用次數（限1次）\n加入網址：https://lin.ee/w4elbGV",
   "user_id_display": "【用戶ID】{user_id}",
-  "separator": "⸻",
-  "vip_plan": "【VIP 方案說明】\n月費 NT$100 可使用 30 天無限次數。\n長期方案優惠：90 天、180 天、360 天\nVIP 到期後自動恢復為免費版。\n可隨時升級或續費。",
-  "share_invite_text": "分享推薦機器人，成功邀請好友加入，當日額外獲得 1 次免費使用次數！"
+  "separator": "⸻"
 }
