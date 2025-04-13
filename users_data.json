@@ -1,0 +1,12 @@
+{
+  "Uxxxxxxxxxxxxxxxxxxxxxx": {
+    "name": "用戶暱稱",
+    "vip": false,
+    "vip_start": "",
+    "vip_expire": "",
+    "daily_used": 0,
+    "invite_bonus": 0,
+    "service_bonus": 0,
+    "extra_bonus": 0
+  }
+}
