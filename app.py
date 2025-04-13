@@ -2,12 +2,12 @@ import os
 import json
 import requests
 from flask import Flask, request, abort
-from linebot.v3.messaging import MessagingApi
+from linebot.v3.messaging import MessagingApi, TextSendMessage, ImageMessage, MessageEvent
 from linebot.v3.webhook import WebhookHandler
 from linebot.v3.exceptions import InvalidSignatureError
-from linebot.v3.messaging.models import TextSendMessage, ImageMessage, MessageEvent
-
 from dotenv import load_dotenv
+
+# 載入環境變數
 load_dotenv()
 
 app = Flask(__name__)
@@ -15,13 +15,16 @@ app = Flask(__name__)
 line_bot_api = MessagingApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 
+# 讀取 config.json 設定檔
 with open('config.json', 'r', encoding='utf-8') as f:
     config = json.load(f)
 
+# 讀取 users_data.json
 def load_users_data():
     with open('users_data.json', 'r', encoding='utf-8') as f:
         return json.load(f)
 
+# 存入 users_data.json
 def save_users_data(data):
     with open('users_data.json', 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
@@ -58,6 +61,7 @@ def generate_caption(topic):
 直接依格式輸出："""
     return chatgpt_generate(prompt)
 
+# Line Webhook 接收路徑
 @app.route("/callback", methods=['POST'])
 def callback():
     signature = request.headers['X-Line-Signature']
@@ -68,10 +72,11 @@ def callback():
         abort(400)
     return 'OK'
 
+# 處理圖片訊息
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image_message(event):
     user_id = event.source.user_id
-    topic = gpt4o_image_to_text("圖片網址")  # 圖片處理待擴充
+    topic = gpt4o_image_to_text("圖片網址或暫存位置")
 
     reply_text = config['welcome_text'] + "\n\n"
     reply_text += generate_caption(topic)
@@ -97,5 +102,6 @@ def handle_image_message(event):
         TextSendMessage(text=reply_text)
     )
 
+# Render 必須設定 host 與 port
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
