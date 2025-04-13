@@ -1,13 +1,11 @@
-# app.py 最新版（支援 line-bot-sdk v3）
-
 import os
 import json
 import requests
 from flask import Flask, request, abort
-from linebot.v3.messaging import LineBotApi
+from linebot.v3 import LineBotApi
 from linebot.v3.webhook import WebhookHandler
 from linebot.v3.exceptions import InvalidSignatureError
-from linebot.v3.messaging import TextSendMessage, ImageMessage, MessageEvent
+from linebot.v3.models import TextSendMessage, ImageMessage, MessageEvent
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -28,6 +26,7 @@ def save_users_data(data):
     with open('users_data.json', 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
+# GPT-3.5 文案生成功能
 def chatgpt_generate(prompt, model="gpt-3.5-turbo"):
     url = "https://api.openai.com/v1/chat/completions"
     headers = {
@@ -43,11 +42,13 @@ def chatgpt_generate(prompt, model="gpt-3.5-turbo"):
     result = response.json()
     return result['choices'][0]['message']['content'].strip()
 
+# GPT-4o 圖片解析（模擬示範版）
 def gpt4o_image_to_text(image_url):
     prompt = "請描述這張圖片的主題與關鍵詞，簡短即可。"
-    # 此處請串接 GPT-4o 圖片解析 API
+    # 真正串接 GPT-4o 圖片解析 API 請自行擴充
     return "黃昏、公路、夕陽、車燈、旅程"
 
+# 自動產生 3 組不同風格文案
 def generate_caption(topic):
     prompt = f"""請針對主題「{topic}」產生三組不同風格的文案，每組包含【標題】與【內文】。
 每個標題15字內，內文40字內。
@@ -71,16 +72,9 @@ def callback():
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image_message(event):
     user_id = event.source.user_id
-    message_id = event.message.id
-    message_content = line_bot_api.get_message_content(message_id)
 
-    image_path = f'tmp/{message_id}.jpg'
-    with open(image_path, 'wb') as f:
-        for chunk in message_content.iter_content():
-            f.write(chunk)
-
-    image_url = "你的圖片網址或空間"  # 自行處理圖床或暫存網址
-    topic = gpt4o_image_to_text(image_url)
+    # 圖片暫存處理（可擴充）
+    topic = gpt4o_image_to_text("圖片網址或暫存連結")
 
     reply_text = config['welcome_text'] + "\n\n"
     reply_text += generate_caption(topic)
