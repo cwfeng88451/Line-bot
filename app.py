@@ -32,15 +32,13 @@ def gpt4o_image_to_text(image_base64):
         "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
         "Content-Type": "application/json"
     }
-    prompt = "請描述這張圖片的內容或主題，簡短關鍵詞即可。"
-    payload = {
+    prompt = "這張圖片的主題或內容是什麼？請用關鍵詞或短語簡短描述。"
+    data = {
         "model": "gpt-4o",
-        "messages": [
-            {"role": "user", "content": prompt}
-        ],
+        "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.7
     }
-    response = requests.post(url, headers=headers, json=payload)
+    response = requests.post(url, headers=headers, json=data)
     result = response.json()
     return result['choices'][0]['message']['content'].strip()
 
@@ -62,11 +60,10 @@ def chatgpt_generate(prompt, model="gpt-3.5-turbo"):
 def generate_caption(topic):
     prompt = f"""請針對主題「{topic}」產生三組不同風格的文案，每組包含【標題】與【內文】。
 每個標題15字內，內文40字內。
-風格如下：
-1. 感性抒情
-2. 生活紀錄
-3. 激勵勵志
-直接依格式輸出："""
+不用標示風格，請統一輸出：
+文案一
+文案二
+文案三"""
     return chatgpt_generate(prompt)
     
 @app.route("/callback", methods=['POST'])
@@ -111,7 +108,7 @@ def handle_image_message(event):
     image_binary = b''.join(chunk for chunk in message_content.iter_content())
     image_base64 = base64.b64encode(image_binary).decode('utf-8')
 
-    # GPT-4o 圖片解析（真實）
+    # GPT-4o 圖片解析
     topic = gpt4o_image_to_text(image_base64)
 
     reply_text = config['welcome_text'] + "\n\n"
