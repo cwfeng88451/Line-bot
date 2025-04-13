@@ -7,6 +7,7 @@ from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import TextSendMessage, ImageMessage, MessageEvent
 from dotenv import load_dotenv
+import datetime
 
 load_dotenv()
 
@@ -33,8 +34,7 @@ def gpt4o_image_to_captions(image_base64):
         "Content-Type": "application/json"
     }
     prompt = """你是一位社群媒體文案創作者。
-請根據圖片內容，創作三篇不同風格的貼文，適合分享於 Facebook 或 Instagram。
-每篇包含：
+請根據圖片內容，創作三篇不同風格的社群貼文，每篇包含：
 【標題】15字內
 【內文】40字內
 請直接輸出：
@@ -65,11 +65,14 @@ def callback():
 def handle_image_message(event):
     user_id = event.source.user_id
     message_id = event.message.id
+    profile = line_bot_api.get_profile(user_id)
+    user_name = profile.display_name
+
     users_data = load_users_data()
 
     if user_id not in users_data:
         users_data[user_id] = {
-            "user_name": "未設定",
+            "user_name": user_name,
             "daily_limit": 3,
             "used_count": 0,
             "invite_bonus": 0,
@@ -78,7 +81,7 @@ def handle_image_message(event):
             "vip_days_left": "0"
         }
 
-    user_name = users_data[user_id]["user_name"]
+    users_data[user_id]["user_name"] = user_name
     users_data[user_id]["used_count"] += 1
     save_users_data(users_data)
 
@@ -120,6 +123,10 @@ def handle_image_message(event):
         event.reply_token,
         TextSendMessage(text=reply_text)
     )
+
+    # 紀錄log
+    now = datetime.datetime.now()
+    print(f"[{now}] User: {user_id} ({user_name}) 已使用 {users_data[user_id]['used_count']} 次")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
