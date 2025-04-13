@@ -32,13 +32,10 @@ def gpt4o_image_to_captions(image_base64):
         "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
         "Content-Type": "application/json"
     }
-    prompt = """你是一位社群貼文文案創作者。
-請根據我提供的圖片內容，產生三篇不同風格的貼文，適合發佈在 Facebook 或 Instagram。
-
-每篇文案請包含：
-【標題】約15字內
-【內文】約40字內
-
+    prompt = """你是一位社群文案創作者。
+請根據圖片內容創作三篇不同風格的社群貼文，每篇包含：
+【標題】15字內
+【內文】40字內
 請直接輸出：
 文案一
 文案二
@@ -46,9 +43,7 @@ def gpt4o_image_to_captions(image_base64):
 不要加入其他說明。"""
     data = {
         "model": "gpt-4o",
-        "messages": [
-            {"role": "user", "content": prompt}
-        ],
+        "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.7
     }
     response = requests.post(url, headers=headers, json=data)
@@ -64,7 +59,6 @@ def callback():
     except InvalidSignatureError:
         abort(400)
     return 'OK'
-
 
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image_message(event):
@@ -121,7 +115,6 @@ def handle_image_message(event):
         event.reply_token,
         TextSendMessage(text=reply_text)
     )
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
