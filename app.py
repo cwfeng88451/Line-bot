@@ -52,7 +52,7 @@ def generate_caption(topic):
 3. 激勵勵志
 直接依格式輸出："""
     return chatgpt_generate(prompt)
-
+    
 @app.route("/callback", methods=['POST'])
 def callback():
     signature = request.headers['X-Line-Signature']
@@ -69,26 +69,25 @@ def callback():
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image_message(event):
     user_id = event.source.user_id
+    users_data = load_users_data()
+
+    user_name = users_data.get(user_id, {}).get("name", "未設定暱稱")
     topic = gpt4o_image_to_text("圖片網址")
 
     reply_text = config['welcome_text'] + "\n\n"
-    reply_text += generate_caption(topic)
-    reply_text += f"\n{config['separator']}\n"
-    reply_text += config['user_commands']
-    reply_text += f"\n{config['separator']}\n"
+    reply_text += generate_caption(topic) + "\n\n"
+    reply_text += f"{config['separator']}\n\n"
+    reply_text += config['user_commands'] + "\n\n"
+    reply_text += f"{config['separator']}\n\n"
     reply_text += config['user_status_format'].format(
         daily_limit=3,
         used_count=1,
-        remaining_count=2,
-        invite_bonus=3,
-        service_bonus=5,
-        vip_expiry="無",
-        vip_days_left="0"
-    )
-    reply_text += f"\n{config['separator']}\n"
-    reply_text += config['add_service_text']
-    reply_text += f"\n{config['separator']}\n"
-    reply_text += config['user_id_display'].format(user_id=user_id)
+        remaining_count=2
+    ) + "\n\n"
+    reply_text += f"{config['separator']}\n\n"
+    reply_text += config['add_service_text'] + "\n\n"
+    reply_text += f"{config['separator']}\n\n"
+    reply_text += config['user_id_display'].format(name=user_name, user_id=user_id)
 
     line_bot_api.reply_message(
         event.reply_token,
