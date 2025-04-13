@@ -2,26 +2,23 @@ import os
 import json
 import requests
 from flask import Flask, request, abort
-from linebot.v3.messaging import MessagingApi
-from linebot.v3.webhook import WebhookHandler
-from linebot.v3.exceptions import InvalidSignatureError
-from linebot.v3.messaging.models import TextSendMessage, ImageMessage, MessageEvent
+from linebot import LineBotApi, WebhookHandler
+from linebot.exceptions import InvalidSignatureError
+from linebot.models import TextSendMessage, ImageMessage, MessageEvent
 from dotenv import load_dotenv
 
-# 載入 .env 變數
 load_dotenv()
 
 app = Flask(__name__)
 
-# 初始化 LINE API
-line_bot_api = MessagingApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
+line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 
 # 讀取 config.json 設定檔
 with open('config.json', 'r', encoding='utf-8') as f:
     config = json.load(f)
 
-# 讀取/儲存會員資料
+# 會員資料處理
 def load_users_data():
     with open('users_data.json', 'r', encoding='utf-8') as f:
         return json.load(f)
@@ -30,7 +27,7 @@ def save_users_data(data):
     with open('users_data.json', 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-# ChatGPT 3.5 產生文案
+# GPT-3.5 自動產文
 def chatgpt_generate(prompt, model="gpt-3.5-turbo"):
     url = "https://api.openai.com/v1/chat/completions"
     headers = {
@@ -50,7 +47,7 @@ def chatgpt_generate(prompt, model="gpt-3.5-turbo"):
 def gpt4o_image_to_text(image_url):
     return "黃昏、公路、夕陽、車燈、旅程"
 
-# 自動產生 3 組文案
+# 自動產生三組不同風格文案
 def generate_caption(topic):
     prompt = f"""請針對主題「{topic}」產生三組不同風格的文案，每組包含【標題】與【內文】。
 每個標題15字內，內文40字內。
@@ -61,7 +58,7 @@ def generate_caption(topic):
 直接依格式輸出："""
     return chatgpt_generate(prompt)
 
-# Line Webhook 接收路由
+# Line Webhook
 @app.route("/callback", methods=['POST'])
 def callback():
     signature = request.headers['X-Line-Signature']
@@ -102,6 +99,6 @@ def handle_image_message(event):
         TextSendMessage(text=reply_text)
     )
 
-# 部署到 Render 的啟動方式
+# Render 部署執行
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
