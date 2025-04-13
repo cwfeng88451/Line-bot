@@ -26,45 +26,35 @@ def save_users_data(data):
     with open('users_data.json', 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-def gpt4o_image_to_text(image_base64):
+def gpt4o_image_to_captions(image_base64):
     url = "https://api.openai.com/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
         "Content-Type": "application/json"
     }
-    prompt = "這張圖片的主題或內容是什麼？請用關鍵詞或短語簡短描述。"
-    data = {
-        "model": "gpt-4o",
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.7
-    }
-    response = requests.post(url, headers=headers, json=data)
-    result = response.json()
-    return result['choices'][0]['message']['content'].strip()
+    prompt = """你是一個社群媒體文案創作者。
+請根據我提供的圖片內容，產生三篇不同風格的貼文，適合用於 Facebook 或 Instagram。
 
-def chatgpt_generate(prompt, model="gpt-3.5-turbo"):
-    url = "https://api.openai.com/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "model": model,
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.7
-    }
-    response = requests.post(url, headers=headers, json=data)
-    result = response.json()
-    return result['choices'][0]['message']['content'].strip()
+每篇請包含：
+【標題】約15字內
+【內文】約40字內
 
-def generate_caption(topic):
-    prompt = f"""請針對主題「{topic}」產生三組不同風格的文案，每組包含【標題】與【內文】。
-每個標題15字內，內文40字內。
-不用標示風格，請統一輸出：
+請直接依序輸出：
 文案一
 文案二
-文案三"""
-    return chatgpt_generate(prompt)
+文案三
+不要加入其他文字。
+"""
+    data = {
+        "model": "gpt-4o",
+        "messages": [
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7
+    }
+    response = requests.post(url, headers=headers, json=data)
+    result = response.json()
+    return result['choices'][0]['message']['content'].strip()
     
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -108,11 +98,11 @@ def handle_image_message(event):
     image_binary = b''.join(chunk for chunk in message_content.iter_content())
     image_base64 = base64.b64encode(image_binary).decode('utf-8')
 
-    # GPT-4o 圖片解析
-    topic = gpt4o_image_to_text(image_base64)
+    # GPT-4o 圖片解析 + 自動產文
+    reply_content = gpt4o_image_to_captions(image_base64)
 
     reply_text = config['welcome_text'] + "\n\n"
-    reply_text += generate_caption(topic) + "\n\n"
+    reply_text += reply_content + "\n\n"
     reply_text += f"{config['separator']}\n\n"
     reply_text += config['user_commands'] + "\n\n"
     reply_text += f"{config['separator']}\n\n"
