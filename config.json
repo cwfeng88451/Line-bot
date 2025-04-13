@@ -7,6 +7,6 @@
   "add_service_text": "加入客服，獲得額外10次免費使用次數（限1次）\n加入網址：https://lin.ee/w4elbGV",
   "user_id_display": "【用戶ID】{user_id} / 暱稱：{user_name}",
   "separator": "⸻",
-  "announcement": "目前無公告。",
-  "notes": "備註：若有問題請聯繫客服協助處理。"
+  "announcement": "【公告】\n目前系統維護正常，歡迎使用。",
+  "notes": "【備註】\n若有任何問題請聯繫客服協助處理。"
 }
