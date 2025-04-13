@@ -1,12 +1,13 @@
-# app.py 第一段
+# app.py 最新版（支援 line-bot-sdk v3）
 
 import os
 import json
 import requests
 from flask import Flask, request, abort
-from linebot import LineBotApi, WebhookHandler
-from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, ImageMessage, TextSendMessage
+from linebot.v3.messaging import LineBotApi
+from linebot.v3.webhook import WebhookHandler
+from linebot.v3.exceptions import InvalidSignatureError
+from linebot.v3.messaging import TextSendMessage, ImageMessage, MessageEvent
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -16,21 +17,17 @@ app = Flask(__name__)
 line_bot_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 
-# 讀取 config.json
 with open('config.json', 'r', encoding='utf-8') as f:
     config = json.load(f)
 
-# 讀取 users_data.json
 def load_users_data():
     with open('users_data.json', 'r', encoding='utf-8') as f:
         return json.load(f)
 
-# 儲存 users_data.json
 def save_users_data(data):
     with open('users_data.json', 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-# 取得 GPT 產文
 def chatgpt_generate(prompt, model="gpt-3.5-turbo"):
     url = "https://api.openai.com/v1/chat/completions"
     headers = {
@@ -45,37 +42,30 @@ def chatgpt_generate(prompt, model="gpt-3.5-turbo"):
     response = requests.post(url, headers=headers, json=data)
     result = response.json()
     return result['choices'][0]['message']['content'].strip()
-    
-# app.py 第二段
 
-# 處理圖片內容 GPT-4o
 def gpt4o_image_to_text(image_url):
-    prompt = "請描述這張圖片的場景與主題，提供關鍵詞，不用太長。"
-    # 這裡請串接你 GPT-4o 圖片解析 API
-    return "黃昏、高速公路、夕陽、車輛、遠方、寧靜"
+    prompt = "請描述這張圖片的主題與關鍵詞，簡短即可。"
+    # 此處請串接 GPT-4o 圖片解析 API
+    return "黃昏、公路、夕陽、車燈、旅程"
 
-# 自動產生三種風格文案
 def generate_caption(topic):
     prompt = f"""請針對主題「{topic}」產生三組不同風格的文案，每組包含【標題】與【內文】。
-每個標題約15字內，內文約40字內。
+每個標題15字內，內文40字內。
 風格如下：
 1. 感性抒情
 2. 生活紀錄
 3. 激勵勵志
 直接依格式輸出："""
-
     return chatgpt_generate(prompt)
 
 @app.route("/callback", methods=['POST'])
 def callback():
     signature = request.headers['X-Line-Signature']
     body = request.get_data(as_text=True)
-
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
         abort(400)
-
     return 'OK'
 
 @handler.add(MessageEvent, message=ImageMessage)
@@ -89,12 +79,11 @@ def handle_image_message(event):
         for chunk in message_content.iter_content():
             f.write(chunk)
 
-    image_url = "你的圖片存放網址"  # 可用 imgur、s3、自架空間
+    image_url = "你的圖片網址或空間"  # 自行處理圖床或暫存網址
     topic = gpt4o_image_to_text(image_url)
+
     reply_text = config['welcome_text'] + "\n\n"
-
     reply_text += generate_caption(topic)
-
     reply_text += f"\n{config['separator']}\n"
     reply_text += config['user_commands']
     reply_text += f"\n{config['separator']}\n"
