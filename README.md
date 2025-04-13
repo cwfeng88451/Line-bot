@@ -1,79 +1,90 @@
-# AI看圖寫文案智能體
+# AI看圖寫文案智能體 - LINE Bot 專案
 
-## 專案介紹
-這是一個 LINE 機器人，使用者上傳圖片後，自動產生社群貼文用的標題與文案。
-
-## 環境需求
-- Python 3.8+
-- Flask
-- requests
-- python-dotenv
-- OpenAI API Key
-- LINE Messaging API
+## 專案說明
+此專案為 LINE 圖片文案產生機器人，透過上傳圖片，自動產生三種不同風格的文案（標題約15字，內文約40字內），方便用戶於社群平台發文使用。
 
 ---
 
-## 專案檔案說明
-| 檔案 | 功能說明 |
-|------|----------|
-| app.py | 系統核心程式 |
-| config.json | 動態文字設定檔 |
-| users_data.json | 會員資料自動儲存 |
-| users_list.txt | 簡易會員 user_id 列表 |
-| logs/ | 操作紀錄自動儲存 |
-| .env | 環境變數設定檔（請參考 .env.example）|
-| requirements.txt | Python 套件需求 |
-| AI_Operation_Guide.txt | 營運維護手冊 |
+## 專案架構
+- app.py             主程式（圖片解析＋文案產生）
+- config.json        文字設定管理
+- users_data.json    會員資料儲存
+- requirements.txt   Python 環境需求
+- .env               環境變數設定
+- logs/              操作紀錄資料夾
 
 ---
 
-## .env 設定範例
-LINE_CHANNEL_ACCESS_TOKEN=你的LINE_CHANNEL_ACCESS_TOKEN
-LINE_CHANNEL_SECRET=你的LINE_CHANNEL_SECRET
-OPENAI_API_KEY=你的OPENAI_API_KEY
+## 安裝步驟
+1. 安裝 Python 環境
+2. 安裝套件
+```bash
+pip install -r requirements.txt
 
-COST_PER_POST=0.05
-TWD_EXCHANGE_RATE=33
+	3.	設定 .env 環境變數
+	4.	部署至 Render 或 VPS
 
----
+⸻
 
-## 使用者指令
-| 指令 | 功能 |
-|------|------|
-| 資訊 / 剩餘次數 | 查看個人狀態與次數 |
-| VIP | 查看 VIP 方案 |
-| 分享 | 產生個人推薦網址 |
-| 我的ID | 查詢自己的 user_id |
+基本功能
+	•	免費會員：每日可使用 3 次，產生 1 組文案
+	•	VIP 會員：無限次數，產生 3 組文案
+	•	自動顯示使用者狀態與剩餘次數
+	•	分享推薦機制
+	•	加入客服獲得額外次數
 
----
+⸻
 
-## 管理者指令
-| 指令 | 功能 |
-|------|------|
-| 管理 增加客服 user_id 次數 | 增加加入客服獎勵次數 |
-| 管理 增加推薦 user_id 次數 | 增加推薦好友次數 |
-| 管理 增加獎勵 user_id 次數 | 額外客服提供獎勵次數 |
-| 管理 查詢 user_id | 查詢該會員完整資料 |
+管理者指令（可於 LINE 對話框操作）
+	•	資訊：查看個人狀態
+	•	VIP：查看 VIP 方案與付費說明
+	•	分享：產生推薦鏈結
+	•	增加VIP ID：手動升級 VIP
+	•	調整次數 ID 數字：手動修改使用次數
 
----
+⸻
 
-## 資料管理
-- 所有資料自動寫入 json 檔案
-- logs/ 資料夾每日自動產生紀錄檔
-- Render / Github 重啟後自動讀取最新資料
-- 請定期下載備份 users_data.json 與 logs/ 檔案
+聯絡開發者
+
+若需客製化開發，請聯絡管理者。
 
 ---
 
-## 部署步驟
-1. 上傳專案檔案至 GitHub
-2. Render 建立 Web Service
-3. 設定 .env 環境變數
-4. Deploy 最新版本
-5. 測試 webhook 回應
-6. 開始營運！
+## 2. AI_Operation_Guide.txt（營運管理手冊）
 
----
+```txt
+AI看圖寫文案智能體 營運管理手冊
 
-## 備註
-詳細營運與維護請參考 AI_Operation_Guide.txt
+【重要檔案管理】
+- app.py：主程式，勿隨意修改。
+- config.json：所有文字內容管理，公告/提示/分享文案皆於此修改。
+- users_data.json：會員資料，自動更新，請定期備份。
+- logs/：操作紀錄，方便查帳與管理。
+
+【每日營運提醒】
+1. 定期備份 users_data.json 與 config.json。
+2. 確認金流收款紀錄。
+3. 人工處理 VIP 開通、增加次數。
+
+【收費建議】
+- 免費版：每日3次。
+- VIP 月費：NT$100。
+- 長期VIP方案：
+  - 90天：NT$285
+  - 180天：NT$540
+  - 360天：NT$1020
+
+【管理者指令範例】
+- 增加VIP Uxxxxxxxx 30（開通VIP 30天）
+- 調整次數 Uxxxxxxxx 5（增加次數5次）
+
+【重要注意事項】
+- 所有資料請於主機 logs/ users_data.json 資料夾備份。
+- config.json 為動態管理，所有顯示內容可自由修改。
+- 用戶資料已完全本地化儲存，安全性高，維護方便。
+
+【未來擴充方向】
+- 金流自動串接（藍新金流 / 綠界）
+- Google Drive 自動備份
+- 動態多語言版本
+- AI風格客製文案擴充（進階 VIP）
