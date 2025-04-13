@@ -40,7 +40,8 @@ def chatgpt_generate(prompt, model="gpt-3.5-turbo"):
     result = response.json()
     return result['choices'][0]['message']['content'].strip()
 
-def gpt4o_image_to_text(image_url):
+def gpt4o_image_to_text(image_path):
+    # 模擬 GPT-4o 圖片解析（此處自行擴充為真實圖片處理邏輯）
     return "黃昏、公路、夕陽、車燈、旅程"
 
 def generate_caption(topic):
@@ -69,10 +70,21 @@ def callback():
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image_message(event):
     user_id = event.source.user_id
+    message_id = event.message.id
     users_data = load_users_data()
-
     user_name = users_data.get(user_id, {}).get("name", "未設定暱稱")
-    topic = gpt4o_image_to_text("圖片網址")
+
+    # 下載圖片並暫存
+    if not os.path.exists('tmp'):
+        os.makedirs('tmp')
+    image_path = f'tmp/{message_id}.jpg'
+    message_content = line_bot_api.get_message_content(message_id)
+    with open(image_path, 'wb') as f:
+        for chunk in message_content.iter_content():
+            f.write(chunk)
+
+    # GPT-4o 圖片解析（模擬）
+    topic = gpt4o_image_to_text(image_path)
 
     reply_text = config['welcome_text'] + "\n\n"
     reply_text += generate_caption(topic) + "\n\n"
@@ -81,11 +93,17 @@ def handle_image_message(event):
     reply_text += f"{config['separator']}\n\n"
     reply_text += config['user_status_format'].format(
         daily_limit=3,
-        used_count=1,
-        remaining_count=2
+        used_count=users_data.get(user_id, {}).get("daily_used", 0),
+        remaining_count=3 - users_data.get(user_id, {}).get("daily_used", 0),
+        service_bonus=users_data.get(user_id, {}).get("service_bonus", 0),
+        extra_bonus=users_data.get(user_id, {}).get("extra_bonus", 0)
     ) + "\n\n"
     reply_text += f"{config['separator']}\n\n"
     reply_text += config['add_service_text'] + "\n\n"
+    reply_text += f"{config['separator']}\n\n"
+    reply_text += config['announcement'] + "\n\n"
+    reply_text += f"{config['separator']}\n\n"
+    reply_text += config['remark'] + "\n\n"
     reply_text += f"{config['separator']}\n\n"
     reply_text += config['user_id_display'].format(name=user_name, user_id=user_id)
 
