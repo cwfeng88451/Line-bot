@@ -32,8 +32,9 @@ def gpt4o_image_to_captions(image_base64):
         "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
         "Content-Type": "application/json"
     }
-    prompt = """你是一位社群文案創作者。
-請根據圖片內容創作三篇不同風格的社群貼文，每篇包含：
+    prompt = """你是一位社群媒體文案創作者。
+請根據圖片內容，創作三篇不同風格的貼文，適合分享於 Facebook 或 Instagram。
+每篇包含：
 【標題】15字內
 【內文】40字內
 請直接輸出：
@@ -68,7 +69,7 @@ def handle_image_message(event):
 
     if user_id not in users_data:
         users_data[user_id] = {
-            "nickname": "未設定",
+            "user_name": "未設定",
             "daily_limit": 3,
             "used_count": 0,
             "invite_bonus": 0,
@@ -77,7 +78,7 @@ def handle_image_message(event):
             "vip_days_left": "0"
         }
 
-    nickname = users_data[user_id]["nickname"]
+    user_name = users_data[user_id]["user_name"]
     users_data[user_id]["used_count"] += 1
     save_users_data(users_data)
 
@@ -112,7 +113,7 @@ def handle_image_message(event):
     reply_text += f"{config['separator']}\n\n"
     reply_text += config['user_id_display'].format(
         user_id=user_id,
-        nickname=nickname
+        user_name=user_name
     )
 
     line_bot_api.reply_message(
