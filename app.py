@@ -1,5 +1,6 @@
 import os
 import json
+import base64
 import requests
 from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookHandler
@@ -25,6 +26,24 @@ def save_users_data(data):
     with open('users_data.json', 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
+def gpt4o_image_to_text(image_base64):
+    url = "https://api.openai.com/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
+        "Content-Type": "application/json"
+    }
+    prompt = "請描述這張圖片的內容或主題，簡短關鍵詞即可。"
+    payload = {
+        "model": "gpt-4o",
+        "messages": [
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7
+    }
+    response = requests.post(url, headers=headers, json=payload)
+    result = response.json()
+    return result['choices'][0]['message']['content'].strip()
+
 def chatgpt_generate(prompt, model="gpt-3.5-turbo"):
     url = "https://api.openai.com/v1/chat/completions"
     headers = {
@@ -40,10 +59,6 @@ def chatgpt_generate(prompt, model="gpt-3.5-turbo"):
     result = response.json()
     return result['choices'][0]['message']['content'].strip()
 
-def gpt4o_image_to_text(image_path):
-    # 模擬 GPT-4o 圖片解析（此處自行擴充為真實圖片處理邏輯）
-    return "黃昏、公路、夕陽、車燈、旅程"
-
 def generate_caption(topic):
     prompt = f"""請針對主題「{topic}」產生三組不同風格的文案，每組包含【標題】與【內文】。
 每個標題15字內，內文40字內。
@@ -58,12 +73,10 @@ def generate_caption(topic):
 def callback():
     signature = request.headers['X-Line-Signature']
     body = request.get_data(as_text=True)
-
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
         abort(400)
-
     return 'OK'
 
 
@@ -72,19 +85,34 @@ def handle_image_message(event):
     user_id = event.source.user_id
     message_id = event.message.id
     users_data = load_users_data()
-    user_name = users_data.get(user_id, {}).get("name", "未設定暱稱")
 
-    # 下載圖片並暫存
-    if not os.path.exists('tmp'):
-        os.makedirs('tmp')
-    image_path = f'tmp/{message_id}.jpg'
+    if user_id not in users_data:
+        users_data[user_id] = {
+            "name": "未設定暱稱",
+            "vip": False,
+            "vip_start": "",
+            "vip_expire": "",
+            "daily_used": 0,
+            "invite_bonus": 0,
+            "service_bonus": 0,
+            "extra_bonus": 0
+        }
+
+    user_name = users_data[user_id]["name"]
+
+    # 更新次數
+    users_data[user_id]["daily_used"] += 1
+    save_users_data(users_data)
+
+    remaining_count = 3 - users_data[user_id]["daily_used"]
+
+    # 取得圖片 binary 並轉 base64
     message_content = line_bot_api.get_message_content(message_id)
-    with open(image_path, 'wb') as f:
-        for chunk in message_content.iter_content():
-            f.write(chunk)
+    image_binary = b''.join(chunk for chunk in message_content.iter_content())
+    image_base64 = base64.b64encode(image_binary).decode('utf-8')
 
-    # GPT-4o 圖片解析（模擬）
-    topic = gpt4o_image_to_text(image_path)
+    # GPT-4o 圖片解析（真實）
+    topic = gpt4o_image_to_text(image_base64)
 
     reply_text = config['welcome_text'] + "\n\n"
     reply_text += generate_caption(topic) + "\n\n"
@@ -93,10 +121,10 @@ def handle_image_message(event):
     reply_text += f"{config['separator']}\n\n"
     reply_text += config['user_status_format'].format(
         daily_limit=3,
-        used_count=users_data.get(user_id, {}).get("daily_used", 0),
-        remaining_count=3 - users_data.get(user_id, {}).get("daily_used", 0),
-        service_bonus=users_data.get(user_id, {}).get("service_bonus", 0),
-        extra_bonus=users_data.get(user_id, {}).get("extra_bonus", 0)
+        used_count=users_data[user_id]["daily_used"],
+        remaining_count=remaining_count,
+        service_bonus=users_data[user_id]["service_bonus"],
+        extra_bonus=users_data[user_id]["extra_bonus"]
     ) + "\n\n"
     reply_text += f"{config['separator']}\n\n"
     reply_text += config['add_service_text'] + "\n\n"
