@@ -32,19 +32,18 @@ def gpt4o_image_to_captions(image_base64):
         "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
         "Content-Type": "application/json"
     }
-    prompt = """你是一個社群媒體文案創作者。
-請根據我提供的圖片內容，產生三篇不同風格的貼文，適合用於 Facebook 或 Instagram。
+    prompt = """你是一位社群貼文文案創作者。
+請根據我提供的圖片內容，產生三篇不同風格的貼文，適合發佈在 Facebook 或 Instagram。
 
-每篇請包含：
+每篇文案請包含：
 【標題】約15字內
 【內文】約40字內
 
-請直接依序輸出：
+請直接輸出：
 文案一
 文案二
 文案三
-不要加入其他文字。
-"""
+不要加入其他說明。"""
     data = {
         "model": "gpt-4o",
         "messages": [
@@ -55,7 +54,7 @@ def gpt4o_image_to_captions(image_base64):
     response = requests.post(url, headers=headers, json=data)
     result = response.json()
     return result['choices'][0]['message']['content'].strip()
-    
+
 @app.route("/callback", methods=['POST'])
 def callback():
     signature = request.headers['X-Line-Signature']
@@ -86,19 +85,15 @@ def handle_image_message(event):
         }
 
     user_name = users_data[user_id]["name"]
-
-    # 更新次數
     users_data[user_id]["daily_used"] += 1
     save_users_data(users_data)
 
     remaining_count = 3 - users_data[user_id]["daily_used"]
 
-    # 取得圖片 binary 並轉 base64
     message_content = line_bot_api.get_message_content(message_id)
     image_binary = b''.join(chunk for chunk in message_content.iter_content())
     image_base64 = base64.b64encode(image_binary).decode('utf-8')
 
-    # GPT-4o 圖片解析 + 自動產文
     reply_content = gpt4o_image_to_captions(image_base64)
 
     reply_text = config['welcome_text'] + "\n\n"
