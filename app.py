@@ -27,29 +27,51 @@ def save_users_data(data):
     with open('users_data.json', 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-def gpt4o_image_to_captions(image_base64):
+def gpt4o_image_analysis(image_base64):
     url = "https://api.openai.com/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
         "Content-Type": "application/json"
     }
-    prompt = """你是一位社群媒體文案創作者。
-請根據圖片內容，創作三篇不同風格的社群貼文，每篇包含：
+
+    prompt1 = "請幫我簡短描述這張圖片的主題與內容。"
+    data1 = {
+        "model": "gpt-4o",
+        "messages": [{"role": "user", "content": prompt1}],
+        "temperature": 0.3
+    }
+    response1 = requests.post(url, headers=headers, json=data1)
+    image_topic = response1.json()['choices'][0]['message']['content'].strip()
+
+    prompt2 = f"""
+請根據這張圖片的主題「{image_topic}」，撰寫三組不同風格的社群貼文文案，適合用於FB、IG、部落格分享。
+
+格式要求：
+文案一：
 【標題】15字內
 【內文】40字內
-請直接輸出：
-文案一
-文案二
-文案三
-不要加入其他說明。"""
-    data = {
+
+文案二：
+【標題】15字內
+【內文】40字內
+
+文案三：
+【標題】15字內
+【內文】40字內
+
+撰寫要求：
+1. 必須依據圖片內容進行敘述。
+2. 要有畫面感、故事性、情感連結。
+3. 每組風格不同，適合專業寫手或部落客參考。
+4. 不要加入其他說明，直接輸出內容。
+"""
+    data2 = {
         "model": "gpt-4o",
-        "messages": [{"role": "user", "content": prompt}],
+        "messages": [{"role": "user", "content": prompt2}],
         "temperature": 0.7
     }
-    response = requests.post(url, headers=headers, json=data)
-    result = response.json()
-    return result['choices'][0]['message']['content'].strip()
+    response2 = requests.post(url, headers=headers, json=data2)
+    return response2.json()['choices'][0]['message']['content'].strip()
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -91,7 +113,7 @@ def handle_image_message(event):
     image_binary = b''.join(chunk for chunk in message_content.iter_content())
     image_base64 = base64.b64encode(image_binary).decode('utf-8')
 
-    reply_content = gpt4o_image_to_captions(image_base64)
+    reply_content = gpt4o_image_analysis(image_base64)
 
     reply_text = config['welcome_text'] + "\n\n"
     reply_text += reply_content + "\n\n"
@@ -124,7 +146,6 @@ def handle_image_message(event):
         TextSendMessage(text=reply_text)
     )
 
-    # 紀錄log
     now = datetime.datetime.now()
     print(f"[{now}] User: {user_id} ({user_name}) 已使用 {users_data[user_id]['used_count']} 次")
 
