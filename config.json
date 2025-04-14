@@ -1,12 +1,12 @@
 {
-  "service_name": "AI看圖寫文案機器人",
   "welcome_text": "歡迎使用 AI看圖寫文案機器人，只要上傳圖片，即可快速產生文案，協助你發文不再煩惱。",
-  "reply_format": "【標題】{title}\n【內文】{content}",
-  "user_commands": "【使用者可用指令】\n（1）資訊 - 查看個人狀態\n（2）VIP - 查看 VIP 方案\n（3）分享 - 產生分享推薦鏈結（系統自動統計透過分享添加機器人的數量）",
-  "user_status_format": "【目前狀態】\n每日免費使用次數：{daily_limit}次（每日凌晨自動重置）\n今日已使用次數：{used_count}次\n今日剩餘免費次數：{remaining_count}次\n推薦獎勵剩餘次數：{invite_bonus}次（透過分享推薦獲得）\n客服獎勵剩餘次數：{service_bonus}次（加入客服獲得）\nVIP 到期日：{vip_expiry}（剩餘 {vip_days_left} 天）",
-  "add_service_text": "加入客服，獲得額外10次免費使用次數（限1次）\n加入網址：https://lin.ee/w4elbGV",
-  "user_id_display": "【用戶ID】{user_id} / 暱稱：{user_name}",
+  "user_commands": [
+    "資訊 - 查看個人狀態",
+    "VIP - 查看 VIP 方案",
+    "分享 - 產生分享推薦鏈結（系統自動統計透過分享添加機器人的數量）"
+  ],
+  "user_status_format": "每日免費使用次數：{daily_limit}次（每日凌晨自動重置） 今日已使用次數：{used_count}次 今日剩餘免費次數：{remaining_count}次 推薦獎勵剩餘次數：{invite_bonus}次（透過分享推薦獲得） 客服獎勵剩餘次數：{service_bonus}次（加入客服獲得） VIP 到期日：{vip_expire}",
   "separator": "⸻",
-  "announcement": "【公告】\n目前系統維護正常，歡迎使用。",
-  "notes": "【備註】\n若有任何問題請聯繫客服協助處理。"
-} 
+  "announcement": "加入客服，獲得額外10次免費使用次數（限1次）\n加入網址：https://lin.ee/w4elbGV",
+  "note": "感謝您使用本服務，更多功能持續更新中。"
+}
